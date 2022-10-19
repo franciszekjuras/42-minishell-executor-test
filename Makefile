@@ -11,9 +11,9 @@ OFILES = $(FILES:%=%.o)
 CFLAGS = -Wall -Wextra -Werror
 OPTIM = -ggdb3
 export OPTIM
-INC = -I.
-LIBS= -lft -lexecutor
-LIBS_FILES_ = libft/libft.a executor/libexecutor.a
+INC = -I..
+LIBS= -lexecutor -lft
+LIBS_FILES_ = executor/libexecutor.a libft/libft.a
 LIBS_FILES = $(addprefix ../, $(LIBS_FILES_))
 LIBS_DIRS = $(addprefix -L, $(dir $(LIBS_FILES)))
 
