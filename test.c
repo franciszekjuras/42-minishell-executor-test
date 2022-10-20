@@ -4,6 +4,7 @@
 #include <executor/executor.h>
 #include <interface/line.h>
 #include <interface/test_line.h>
+#include <stdio.h>
 
 int	test_simplest(void)
 {
@@ -40,12 +41,12 @@ int	main(void)
 		passed += test_functions[total]();
 		++total;
 	}
-	printf("^^^\n");
+	fprintf(stderr, "^^^\n");
 	if (passed == total)
-		printf("    %s all %d tests passed\n", TEST_STR_OK, total);
+		fprintf(stderr, "    %s all %d tests passed\n", TEST_STR_OK, total);
 	else
-		printf("    %s %d of %d tests failed\n", TEST_STR_FAIL,
+		fprintf(stderr, "    %s %d of %d tests failed\n", TEST_STR_FAIL,
 			total - passed, total);
-	printf("^^^\n");
+	fprintf(stderr, "^^^\n");
 	return (passed < total);
 }
