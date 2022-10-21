@@ -6,26 +6,55 @@
 #include <interface/test_line.h>
 #include <stdio.h>
 
-int	test_simplest(void)
+int	test_single_cmd_no_args(void)
 {
 	t_line	line;
 	int		i;
 	int		retval;
 	int		res;
+	int		stdout_fd;
+	int		file_match;
 
 	TEST_START();
 	i = 0;
 	test_line_init(&line, 1);
-	test_prog_args(&line.progs[i], 1, "ls");
+	test_prog_args(&line.progs[i], 1, "./megaphone");
 	test_prog_redirs(&line.progs[i++], NULL, NULL);
 	test_line_end(&line, i);
+	stdout_fd = test_redirect_stdout("out/stdout.txt");
 	retval = minish_execute(line);
+	test_restore_stdout(stdout_fd);
+	file_match = test_expect_file_content("out/stdout.txt", "NOISE", NULL);
 	res = test_expect_retval(retval, 0);
-	return (TEST_END(res));
+	return (TEST_END(res && file_match));
+}
+
+int	test_single_cmd_one_arg(void)
+{
+	t_line	line;
+	int		i;
+	int		retval;
+	int		res;
+	int		stdout_fd;
+	int		file_match;
+
+	TEST_START();
+	i = 0;
+	test_line_init(&line, 1);
+	test_prog_args(&line.progs[i], 2, "./megaphone", "hello");
+	test_prog_redirs(&line.progs[i++], NULL, NULL);
+	test_line_end(&line, i);
+	stdout_fd = test_redirect_stdout("out/stdout.txt");
+	retval = minish_execute(line);
+	test_restore_stdout(stdout_fd);
+	file_match = test_expect_file_content("out/stdout.txt", "HELLO", NULL);
+	res = test_expect_retval(retval, 0);
+	return (TEST_END(res && file_match));
 }
 
 int (*const test_functions[])() = {
-	test_simplest,
+	test_single_cmd_no_args,
+	test_single_cmd_one_arg,
     NULL
 };
 

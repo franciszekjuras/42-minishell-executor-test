@@ -17,7 +17,10 @@ LIBS_FILES_ = executor/libexecutor.a libft/libft.a
 LIBS_FILES = $(addprefix ../, $(LIBS_FILES_))
 LIBS_DIRS = $(addprefix -L, $(dir $(LIBS_FILES)))
 
-all: $(NAME)
+all: $(NAME) megaphone
+
+megaphone: megaphone.c
+	gcc $(CFLAGS) megaphone.c -o megaphone
 
 $(NAME): $(OFILES) $(LIBS_FILES)
 	gcc $(LIBS_DIRS) $(OFILES) $(LIBS) -o $@
@@ -37,6 +40,7 @@ clean: clean_libs clean_
 
 fclean_: clean_
 	rm -f $(NAME)
+	rm -f megaphone
 
 fclean: fclean_ clean
 	rm -f $(LIBS_FILES)
