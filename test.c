@@ -1,3 +1,14 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   test.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: fjuras <fjuras@student.42wolfsburg.de>     +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2022/10/24 18:28:02 by fjuras            #+#    #+#             */
+/*   Updated: 2022/10/24 18:30:22 by fjuras           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
 #include <stdlib.h>
 #include <string.h>
@@ -52,10 +63,10 @@ int	test_single_cmd_one_arg(void)
 	return (TEST_END(res && file_match));
 }
 
-int (*const test_functions[])() = {
+int (*const	g_test_functions[])() = {
 	test_single_cmd_no_args,
 	test_single_cmd_one_arg,
-    NULL
+	NULL
 };
 
 int	main(void)
@@ -65,9 +76,9 @@ int	main(void)
 
 	passed = 0;
 	total = 0;
-	while (test_functions[total] != NULL)
+	while (g_test_functions[total] != NULL)
 	{
-		passed += test_functions[total]();
+		passed += g_test_functions[total]();
 		++total;
 	}
 	fprintf(stderr, "^^^\n");
