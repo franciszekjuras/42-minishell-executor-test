@@ -6,7 +6,7 @@
 /*   By: fjuras <fjuras@student.42wolfsburg.de>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/24 18:28:02 by fjuras            #+#    #+#             */
-/*   Updated: 2022/10/27 23:08:01 by fjuras           ###   ########.fr       */
+/*   Updated: 2022/10/27 23:37:30 by fjuras           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,6 @@ typedef struct s_test_data
 {
 	int		i;
 	int		retval;
-	int		stdout_fd;
 	int		retval_match;
 	int		file_match;
 }	t_test_data;
@@ -48,9 +47,9 @@ int	test_single_cmd_no_args(void)
 	test_prog_args(&line.progs[d.i], MEG, NULL);
 	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
 	test_line_end(&line, d.i);
-	d.stdout_fd = test_redirect_stdout("out/stdout.txt");
+	test_redirect_stdout("out/stdout.txt");
 	d.retval = minish_execute(line);
-	test_restore_stdout(d.stdout_fd);
+	test_close_stdout();
 	d.file_match = test_expect_file_content("out/stdout.txt", "NOISE", NULL);
 	d.retval_match = test_expect_retval(d.retval, 0);
 	return (TEST_END(d.retval_match && d.file_match));
@@ -67,9 +66,9 @@ int	test_single_cmd_one_arg(void)
 	test_prog_args(&line.progs[d.i], MEG, "hello", NULL);
 	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
 	test_line_end(&line, d.i);
-	d.stdout_fd = test_redirect_stdout("out/stdout.txt");
+	test_redirect_stdout("out/stdout.txt");
 	d.retval = minish_execute(line);
-	test_restore_stdout(d.stdout_fd);
+	test_close_stdout();
 	d.file_match = test_expect_file_content("out/stdout.txt", "HELLO", NULL);
 	d.retval_match = test_expect_retval(d.retval, 0);
 	return (TEST_END(d.retval_match && d.file_match));
@@ -86,9 +85,9 @@ int	test_1C_in_and_out_redir(void)
 	test_prog_args(&line.progs[d.i], GREP, "dog", NULL);
 	test_prog_redirs(&line.progs[d.i++], "in/animals.txt", "out/out.txt");
 	test_line_end(&line, d.i);
-	d.stdout_fd = test_redirect_stdout("out/stdout.txt");
+	test_redirect_stdout("out/stdout.txt");
 	d.retval = minish_execute(line);
-	test_restore_stdout(d.stdout_fd);
+	test_close_stdout();
 	d.file_match = test_expect_file_content("out/stdout.txt", NULL)
 		& test_expect_file_content("out/out.txt", "dog", NULL);
 	d.retval_match = test_expect_retval(d.retval, 0);
@@ -108,9 +107,9 @@ int	test_2C_2oR_1iR(void)
 	test_prog_args(&line.progs[d.i], MEG, "two", NULL);
 	test_prog_redirs(&line.progs[d.i++], "in/animals.txt", "out/out2.txt");
 	test_line_end(&line, d.i);
-	d.stdout_fd = test_redirect_stdout("out/stdout.txt");
+	test_redirect_stdout("out/stdout.txt");
 	d.retval = minish_execute(line);
-	test_restore_stdout(d.stdout_fd);
+	test_close_stdout();
 	d.file_match = test_expect_file_content("out/stdout.txt", NULL)
 		& test_expect_file_content("out/out1.txt", "ONE", NULL)
 		& test_expect_file_content("out/out2.txt", "TWO", NULL);
@@ -145,5 +144,7 @@ int	main(void)
 		fprintf(stderr, "    %s %d of %d tests failed\n", TEST_STR_FAIL,
 			total - passed, total);
 	fprintf(stderr, "^^^\n");
+	close(0);
+	close(2);
 	return (passed < total);
 }
