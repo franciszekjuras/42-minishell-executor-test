@@ -6,12 +6,15 @@
 /*   By: fjuras <fjuras@student.42wolfsburg.de>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/24 18:28:02 by fjuras            #+#    #+#             */
-/*   Updated: 2022/10/26 22:16:18 by fjuras           ###   ########.fr       */
+/*   Updated: 2022/10/27 23:08:01 by fjuras           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 /*
+Test name abbreviations:
 #C -- # commands
+iR -- input redirection
+oR -- output redirection
 */
 
 #include <stdlib.h>
@@ -22,81 +25,104 @@
 #include <stdio.h>
 
 #define GREP "/usr/bin/grep"
+#define MEG "./megaphone"
+
+typedef struct s_test_data
+{
+	int		i;
+	int		retval;
+	int		stdout_fd;
+	int		retval_match;
+	int		file_match;
+}	t_test_data;
+
 
 int	test_single_cmd_no_args(void)
 {
-	t_line	line;
-	int		i;
-	int		retval;
-	int		res;
-	int		stdout_fd;
-	int		file_match;
+	t_line		line;
+	t_test_data	d;
 
 	TEST_START_CLEAN();
-	i = 0;
+	d.i = 0;
 	test_line_init(&line, 1);
-	test_prog_args(&line.progs[i], "./megaphone", NULL);
-	test_prog_redirs(&line.progs[i++], NULL, NULL);
-	test_line_end(&line, i);
-	stdout_fd = test_redirect_stdout("out/stdout.txt");
-	retval = minish_execute(line);
-	test_restore_stdout(stdout_fd);
-	file_match = test_expect_file_content("out/stdout.txt", "NOISE", NULL);
-	res = test_expect_retval(retval, 0);
-	return (TEST_END(res && file_match));
+	test_prog_args(&line.progs[d.i], MEG, NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	d.stdout_fd = test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_restore_stdout(d.stdout_fd);
+	d.file_match = test_expect_file_content("out/stdout.txt", "NOISE", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
 }
 
 int	test_single_cmd_one_arg(void)
 {
-	t_line	line;
-	int		i;
-	int		retval;
-	int		res;
-	int		stdout_fd;
-	int		file_match;
+	t_line		line;
+	t_test_data	d;
 
 	TEST_START_CLEAN();
-	i = 0;
+	d.i = 0;
 	test_line_init(&line, 1);
-	test_prog_args(&line.progs[i], "./megaphone", "hello", NULL);
-	test_prog_redirs(&line.progs[i++], NULL, NULL);
-	test_line_end(&line, i);
-	stdout_fd = test_redirect_stdout("out/stdout.txt");
-	retval = minish_execute(line);
-	test_restore_stdout(stdout_fd);
-	file_match = test_expect_file_content("out/stdout.txt", "HELLO", NULL);
-	res = test_expect_retval(retval, 0);
-	return (TEST_END(res && file_match));
+	test_prog_args(&line.progs[d.i], MEG, "hello", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	d.stdout_fd = test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_restore_stdout(d.stdout_fd);
+	d.file_match = test_expect_file_content("out/stdout.txt", "HELLO", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
 }
 
 int	test_1C_in_and_out_redir(void)
 {
-	t_line	line;
-	int		i;
-	int		retval;
-	int		res;
-	int		stdout_fd;
-	int		file_match;
+	t_line		line;
+	t_test_data	d;
 
 	TEST_START_CLEAN();
-	i = 0;
+	d.i = 0;
 	test_line_init(&line, 1);
-	test_prog_args(&line.progs[i], GREP, "dog", NULL);
-	test_prog_redirs(&line.progs[i++], "in/animals.txt", "out/out.txt");
-	test_line_end(&line, i);
-	stdout_fd = test_redirect_stdout("out/stdout.txt");
-	retval = minish_execute(line);
-	test_restore_stdout(stdout_fd);
-	file_match = test_expect_file_content("out/stdout.txt", NULL)
+	test_prog_args(&line.progs[d.i], GREP, "dog", NULL);
+	test_prog_redirs(&line.progs[d.i++], "in/animals.txt", "out/out.txt");
+	test_line_end(&line, d.i);
+	d.stdout_fd = test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_restore_stdout(d.stdout_fd);
+	d.file_match = test_expect_file_content("out/stdout.txt", NULL)
 		& test_expect_file_content("out/out.txt", "dog", NULL);
-	res = test_expect_retval(retval, 0);
-	return (TEST_END(res && file_match));
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_2C_2oR_1iR(void)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN();
+	d.i = 0;
+	test_line_init(&line, 2);
+	test_prog_args(&line.progs[d.i], MEG, "one", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, "out/out1.txt");
+	test_prog_args(&line.progs[d.i], MEG, "two", NULL);
+	test_prog_redirs(&line.progs[d.i++], "in/animals.txt", "out/out2.txt");
+	test_line_end(&line, d.i);
+	d.stdout_fd = test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_restore_stdout(d.stdout_fd);
+	d.file_match = test_expect_file_content("out/stdout.txt", NULL)
+		& test_expect_file_content("out/out1.txt", "ONE", NULL)
+		& test_expect_file_content("out/out2.txt", "TWO", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
 }
 
 int (*const	g_test_functions[])() = {
 	test_single_cmd_no_args,
 	test_single_cmd_one_arg,
 	test_1C_in_and_out_redir,
+	test_2C_2oR_1iR,
 	NULL
 };
 
