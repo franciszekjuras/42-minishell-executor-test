@@ -6,7 +6,7 @@
 /*   By: fjuras <fjuras@student.42wolfsburg.de>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/24 18:28:02 by fjuras            #+#    #+#             */
-/*   Updated: 2022/10/27 23:37:30 by fjuras           ###   ########.fr       */
+/*   Updated: 2022/10/28 15:52:38 by fjuras           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,12 +36,12 @@ typedef struct s_test_data
 }	t_test_data;
 
 
-int	test_single_cmd_no_args(void)
+int	test_single_cmd_no_args(const char *filter)
 {
 	t_line		line;
 	t_test_data	d;
 
-	TEST_START_CLEAN();
+	TEST_START_CLEAN(filter);
 	d.i = 0;
 	test_line_init(&line, 1);
 	test_prog_args(&line.progs[d.i], MEG, NULL);
@@ -55,12 +55,12 @@ int	test_single_cmd_no_args(void)
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
-int	test_single_cmd_one_arg(void)
+int	test_single_cmd_one_arg(const char *filter)
 {
 	t_line		line;
 	t_test_data	d;
 
-	TEST_START_CLEAN();
+	TEST_START_CLEAN(filter);
 	d.i = 0;
 	test_line_init(&line, 1);
 	test_prog_args(&line.progs[d.i], MEG, "hello", NULL);
@@ -74,12 +74,12 @@ int	test_single_cmd_one_arg(void)
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
-int	test_1C_in_and_out_redir(void)
+int	test_1C_in_and_out_redir(const char *filter)
 {
 	t_line		line;
 	t_test_data	d;
 
-	TEST_START_CLEAN();
+	TEST_START_CLEAN(filter);
 	d.i = 0;
 	test_line_init(&line, 1);
 	test_prog_args(&line.progs[d.i], GREP, "dog", NULL);
@@ -94,12 +94,12 @@ int	test_1C_in_and_out_redir(void)
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
-int	test_2C_2oR_1iR(void)
+int	test_2C_2oR_1iR(const char *filter)
 {
 	t_line		line;
 	t_test_data	d;
 
-	TEST_START_CLEAN();
+	TEST_START_CLEAN(filter);
 	d.i = 0;
 	test_line_init(&line, 2);
 	test_prog_args(&line.progs[d.i], MEG, "one", NULL);
@@ -117,34 +117,38 @@ int	test_2C_2oR_1iR(void)
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
-int (*const	g_test_functions[])() = {
+int	test_2C_pipe(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 2);
+	test_prog_args(&line.progs[d.i], MEG, "i", "am", "the", "walrus", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_prog_args(&line.progs[d.i], GREP, "THE", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/stdout.txt", "THE", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+const t_test_function g_test_functions[] =
+{
 	test_single_cmd_no_args,
 	test_single_cmd_one_arg,
 	test_1C_in_and_out_redir,
 	test_2C_2oR_1iR,
+	test_2C_pipe,
 	NULL
 };
 
-int	main(void)
+int main (int argc, char **argv)
 {
-	int	passed;
-	int	total;
-
-	passed = 0;
-	total = 0;
-	while (g_test_functions[total] != NULL)
-	{
-		passed += g_test_functions[total]();
-		++total;
-	}
-	fprintf(stderr, "^^^\n");
-	if (passed == total)
-		fprintf(stderr, "    %s all %d tests passed\n", TEST_STR_OK, total);
-	else
-		fprintf(stderr, "    %s %d of %d tests failed\n", TEST_STR_FAIL,
-			total - passed, total);
-	fprintf(stderr, "^^^\n");
-	close(0);
-	close(2);
-	return (passed < total);
+	return (test_main(argc, argv));
 }
