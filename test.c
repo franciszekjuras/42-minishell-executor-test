@@ -6,7 +6,7 @@
 /*   By: fjuras <fjuras@student.42wolfsburg.de>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/24 18:28:02 by fjuras            #+#    #+#             */
-/*   Updated: 2022/10/28 15:52:38 by fjuras           ###   ########.fr       */
+/*   Updated: 2022/11/02 13:50:03 by fjuras           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@ oR -- output redirection
 #include <stdio.h>
 
 #define GREP "/usr/bin/grep"
+#define CAT "/usr/bin/cat"
 #define MEG "./megaphone"
 
 typedef struct s_test_data
@@ -138,6 +139,133 @@ int	test_2C_pipe(const char *filter)
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
+int	test_2C_file_error_in_first(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 2);
+	test_prog_args(&line.progs[d.i], MEG, NULL);
+	test_prog_redirs(&line.progs[d.i++], "./no/such/infile", "./no/such/outfile");
+	test_prog_args(&line.progs[d.i], MEG, "hello", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/stdout.txt", "HELLO", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_2C_file_error_in_last(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 2);
+	test_prog_args(&line.progs[d.i], MEG, "hello", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, "out/hello.txt");
+	test_prog_args(&line.progs[d.i], GREP, "dog", NULL);
+	test_prog_redirs(&line.progs[d.i++], "in/animals.txt", "no/such/outfile");
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/hello.txt", "HELLO", NULL);
+	d.retval_match = test_expect_retval(d.retval, 127);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_2C_exe_error_in_first(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 2);
+	test_prog_args(&line.progs[d.i], "./no/such/exe", NULL);
+	test_prog_redirs(&line.progs[d.i++], "in/animals.txt", NULL);
+	test_prog_args(&line.progs[d.i], MEG, "hello", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/stdout.txt", "HELLO", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_2C_exe_error_in_last(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 2);
+	test_prog_args(&line.progs[d.i], MEG, "hello", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, "out/hello.txt");
+	test_prog_args(&line.progs[d.i], "./no/such/exe", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, "out/out.txt");
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/hello.txt", "HELLO", NULL)
+		& test_expect_file_size("out/out.txt", 0);
+	d.retval_match = test_expect_retval(d.retval, 127);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_2C_dev_random_head(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 2);
+	test_prog_args(&line.progs[d.i], CAT, NULL);
+	test_prog_redirs(&line.progs[d.i++], "/dev/random", NULL);
+	test_prog_args(&line.progs[d.i], "/usr/bin/hexdump", "-n", "16" ,"-e", "/1 \"%02X\"", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_close_stdout();
+	d.file_match = test_expect_file_size("out/stdout.txt", 32);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_2C_retval(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 2);
+	test_prog_args(&line.progs[d.i], "/usr/bin/sleep", "0.1", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_prog_args(&line.progs[d.i], GREP, NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_close_stdout();
+	d.file_match = 1;
+	d.retval_match = test_expect_retval(d.retval, ENOENT);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
 const t_test_function g_test_functions[] =
 {
 	test_single_cmd_no_args,
@@ -145,6 +273,12 @@ const t_test_function g_test_functions[] =
 	test_1C_in_and_out_redir,
 	test_2C_2oR_1iR,
 	test_2C_pipe,
+	test_2C_file_error_in_first,
+	test_2C_file_error_in_last,
+	test_2C_exe_error_in_first,
+	test_2C_exe_error_in_last,
+	test_2C_dev_random_head,
+	test_2C_retval,
 	NULL
 };
 
