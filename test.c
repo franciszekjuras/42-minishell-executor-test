@@ -6,7 +6,7 @@
 /*   By: fjuras <fjuras@student.42wolfsburg.de>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/24 18:28:02 by fjuras            #+#    #+#             */
-/*   Updated: 2022/11/02 13:50:03 by fjuras           ###   ########.fr       */
+/*   Updated: 2022/11/03 19:22:50 by fjuras           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -266,6 +266,67 @@ int	test_2C_retval(const char *filter)
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
+int	test_builtin_echo(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 1);
+	test_prog_args(&line.progs[d.i], "echo", "yuhu", "hello", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/stdout.txt", "yuhu hello", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+
+int	test_builtin_echo_empty(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 1);
+	test_prog_args(&line.progs[d.i], "echo", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/stdout.txt", "", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_builtin_echo_n(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 1);
+	test_prog_args(&line.progs[d.i], "echo", "-n", "yuhu", "hello", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(line);
+	printf("\n" TEST_NONL);
+	fflush(stdout);
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/stdout.txt", "yuhu hello", TEST_NONL, NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+
 const t_test_function g_test_functions[] =
 {
 	test_single_cmd_no_args,
@@ -279,6 +340,9 @@ const t_test_function g_test_functions[] =
 	test_2C_exe_error_in_last,
 	test_2C_dev_random_head,
 	test_2C_retval,
+	test_builtin_echo,
+	test_builtin_echo_empty,
+	test_builtin_echo_n,
 	NULL
 };
 
