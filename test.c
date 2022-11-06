@@ -6,7 +6,7 @@
 /*   By: fjuras <fjuras@student.42wolfsburg.de>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/24 18:28:02 by fjuras            #+#    #+#             */
-/*   Updated: 2022/11/04 15:24:42 by fjuras           ###   ########.fr       */
+/*   Updated: 2022/11/06 18:49:15 by fjuras           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -179,7 +179,7 @@ int	test_2C_file_error_in_last(const char *filter)
 	d.retval = minish_execute(&g_env, line);
 	test_close_stdout();
 	d.file_match = test_expect_file_content("out/hello.txt", "HELLO", NULL);
-	d.retval_match = test_expect_retval(d.retval, 127);
+	d.retval_match = test_expect_retval(d.retval, ENOENT);
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
@@ -222,7 +222,7 @@ int	test_2C_exe_error_in_last(const char *filter)
 	test_close_stdout();
 	d.file_match = test_expect_file_content("out/hello.txt", "HELLO", NULL)
 		& test_expect_file_size("out/out.txt", 0);
-	d.retval_match = test_expect_retval(d.retval, 127);
+	d.retval_match = test_expect_retval(d.retval, ENOENT);
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
@@ -333,13 +333,12 @@ int	test_2C_env_path(const char *filter)
 	t_line		line;
 	t_test_data	d;
 	t_env		env;
-	char		**l_environ;
+	char		**environ;
 
 	TEST_START_CLEAN(filter);
-	l_environ = test_make_environ("PATH=/rubbish:/usr/bin:/also/rubbish", NULL);
-	minish_env_init(&env, l_environ);
-	fprintf(stderr, "%s\n", l_environ[0]);
-	test_free_environ(l_environ);
+	environ = test_make_environ("PATH=/rubbish:/usr/bin:/also/rubbish", NULL);
+	minish_env_init(&env, environ);
+	test_free_environ(environ);
 	d.i = 0;
 	test_line_init(&line, 2);
 	test_prog_args(&line.progs[d.i], MEG, "i", "am", "the", "walrus", NULL);
@@ -349,9 +348,60 @@ int	test_2C_env_path(const char *filter)
 	test_line_end(&line, d.i);
 	test_redirect_stdout("out/stdout.txt");
 	d.retval = minish_execute(&env, line);
+	minish_env_free(env);
 	test_close_stdout();
 	d.file_match = test_expect_file_content("out/stdout.txt", "THE", NULL);
 	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_builtin_env(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+	t_env		env;
+	char		**environ;
+
+	TEST_START_CLEAN(filter);
+	environ = test_make_environ("PATH=/usr/bin", "SFAG=yolo", NULL);
+	minish_env_init(&env, environ);
+	test_free_environ(environ);
+	d.i = 0;
+	test_line_init(&line, 1);
+	test_prog_args(&line.progs[d.i], "env", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, "out/out.txt");
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(&env, line);
+	test_close_stdout();
+	minish_env_free(env);
+	d.file_match = test_expect_file_content("out/out.txt", "PATH=/usr/bin", "SFAG=yolo", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_builtin_env_with_arg(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+	t_env		env;
+	char		**environ;
+
+	TEST_START_CLEAN(filter);
+	environ = test_make_environ("PATH=/usr/bin", "SFAG=yolo", NULL);
+	minish_env_init(&env, environ);
+	test_free_environ(environ);
+	d.i = 0;
+	test_line_init(&line, 1);
+	test_prog_args(&line.progs[d.i], "env", "some", "option", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, "out/out.txt");
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(&env, line);
+	test_close_stdout();
+	minish_env_free(env);
+	d.file_match = test_expect_file_size("out/out.txt", 0);
+	d.retval_match = test_expect_retval(d.retval, EINVAL);
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
@@ -372,11 +422,17 @@ const t_test_function g_test_functions[] =
 	test_builtin_echo_empty,
 	test_builtin_echo_n,
 	test_2C_env_path,
+	test_builtin_env,
+	test_builtin_env_with_arg,
 	NULL
 };
 
 int main (int argc, char **argv)
 {
+	int	retval;
+
 	minish_env_init(&g_env, NULL);
-	return (test_main(argc, argv));
+	retval = test_main(argc, argv);
+	minish_env_free(g_env);
+	return (retval);
 }
