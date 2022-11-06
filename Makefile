@@ -12,7 +12,7 @@ CFLAGS = -Wall -Wextra -Werror
 OPTIM = -ggdb3
 export OPTIM
 INC = -I..
-LIBS= -lexecutor -lft
+LIBS= -lexecutor -lft -lgcov --coverage
 LIBS_FILES_ = executor/libexecutor.a libft/libft.a
 LIBS_FILES = $(addprefix ../, $(LIBS_FILES_))
 LIBS_DIRS = $(addprefix -L, $(dir $(LIBS_FILES)))
@@ -29,7 +29,8 @@ $(OFILES): %.o: %.c $(HFILES)
 	gcc $(CFLAGS) $(OPTIM) $(INC) -c $< -o $@
 
 $(LIBS_FILES): FORCE
-	make -C $(dir $@)
+	make -C ../libft
+	make -C ../executor
 
 FORCE: ;
 
@@ -56,5 +57,14 @@ clean_libs:
 re_libs:
 	make re -C ../libft
 	make re -C ../executor
+
+libs_cov_:
+	make -C ../libft
+	make re -C ../executor COV_FLAGS="-fprofile-arcs -ftest-coverage"
+
+cov: libs_cov_ all
+	./test
+	make -C ../executor report
+	make -C ../executor fclean
 
 .PHONY: all clean clean_ fclean fclean_ re re_ re_libs clean_libs FORCE
