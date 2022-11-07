@@ -6,7 +6,7 @@
 /*   By: fjuras <fjuras@student.42wolfsburg.de>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/24 18:28:02 by fjuras            #+#    #+#             */
-/*   Updated: 2022/11/06 22:29:02 by fjuras           ###   ########.fr       */
+/*   Updated: 2022/11/07 14:55:32 by fjuras           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,17 +17,21 @@ iR -- input redirection
 oR -- output redirection
 */
 
+#include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <executor/executor.h>
 #include <interface/env.h>
 #include <interface/line.h>
 #include <interface/test_framework.h>
-#include <stdio.h>
 
 #define GREP "/usr/bin/grep"
 #define CAT "/usr/bin/cat"
 #define MEG "./megaphone"
+#define SEGF "./segfaulter.sh"
+
+#define SIGCODE(x) (128 + (x))
 
 typedef struct s_test_data
 {
@@ -355,6 +359,58 @@ int	test_2C_env_path(const char *filter)
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
+int	test_2C_env_path_no_exe(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+	t_env		env;
+	char		**environ;
+
+	TEST_START_CLEAN(filter);
+	environ = test_make_environ("PATH=/rubbish:/also/rubbish", NULL);
+	minish_env_init(&env, environ);
+	test_free_environ(environ);
+	d.i = 0;
+	test_line_init(&line, 2);
+	test_prog_args(&line.progs[d.i], MEG, "i", "am", "the", "walrus", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_prog_args(&line.progs[d.i], "grep", "THE", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(&env, line);
+	minish_env_free(env);
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/stdout.txt", NULL);
+	d.retval_match = test_expect_retval(d.retval, ENOENT);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_env_init_with_invalid_vars(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+	t_env		env;
+	char		**environ;
+
+	TEST_START_CLEAN(filter);
+	environ = test_make_environ("AB=yolo", "IN VALID=yolo", "XD=7", NULL);
+	minish_env_init(&env, environ);
+	test_free_environ(environ);
+	d.i = 0;
+	test_line_init(&line, 1);
+	test_prog_args(&line.progs[d.i], "env", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(&env, line);
+	test_close_stdout();
+	minish_env_free(env);
+	d.file_match = test_expect_file_content("out/stdout.txt", "AB=yolo", "XD=7", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
 int	test_builtin_env(const char *filter)
 {
 	t_line		line;
@@ -546,6 +602,32 @@ int	test_builtin_export_path(const char *filter)
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
+
+int	test_builtin_export_no_args(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+	t_env		env;
+	char		**environ;
+
+	TEST_START_CLEAN(filter);
+	environ = test_make_environ("AB=42", "DE=ye", NULL);
+	minish_env_init(&env, environ);
+	test_free_environ(environ);
+	d.i = 0;
+	test_line_init(&line, 1);
+	test_prog_args(&line.progs[d.i], "export", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(&env, line);
+	test_close_stdout();
+	minish_env_free(env);
+	d.file_match = test_expect_file_content("out/stdout.txt", "export \"AB=42\"", "export \"DE=ye\"", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
 int	test_builtin_unset(const char *filter)
 {
 	t_line		line;
@@ -570,6 +652,36 @@ int	test_builtin_unset(const char *filter)
 	minish_env_free(env);
 	d.file_match = test_expect_file_content("out/stdout.txt", "AB=42", "FG=lol", NULL);
 	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_builtin_unset_path(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+	t_env		env;
+	char		**environ;
+
+	TEST_START_CLEAN(filter);
+	environ = test_make_environ("AB=42", "PATH=/usr/bin", "FG=lol", NULL);
+	minish_env_init(&env, environ);
+	test_free_environ(environ);
+	d.i = 0;
+	test_line_init(&line, 3);
+	test_prog_args(&line.progs[d.i], "grep", "dog", NULL);
+	test_prog_redirs(&line.progs[d.i++], "in/animals.txt", "out/out1.txt");
+	test_prog_args(&line.progs[d.i], "unset", "PATH", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_prog_args(&line.progs[d.i], "grep", "dog", NULL);
+	test_prog_redirs(&line.progs[d.i++], "in/animals.txt", "out/out2.txt");
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(&env, line);
+	test_close_stdout();
+	minish_env_free(env);
+	d.file_match = test_expect_file_content("out/out1.txt", "dog", NULL);
+	d.file_match = test_expect_file_size("out/out2.txt", 0);
+	d.retval_match = test_expect_retval(d.retval, ENOENT);
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
@@ -605,6 +717,28 @@ int	test_builtin_unset_invalid(const char *filter)
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
+int	test_3C_segfault_first_and_last(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 3);
+	test_prog_args(&line.progs[d.i], SEGF, NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_prog_args(&line.progs[d.i], MEG, "hello", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, "out/hello.txt");
+	test_prog_args(&line.progs[d.i], SEGF, NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(&g_env, line);
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/hello.txt", "HELLO", NULL);
+	d.retval_match = test_expect_retval(d.retval, SIGCODE(SIGSEGV));
+	return (TEST_END(d.retval_match && d.file_match));
+}
 
 const t_test_function g_test_functions[] =
 {
@@ -623,14 +757,19 @@ const t_test_function g_test_functions[] =
 	test_builtin_echo_empty,
 	test_builtin_echo_n,
 	test_2C_env_path,
+	test_2C_env_path_no_exe,
+	test_env_init_with_invalid_vars,
 	test_builtin_env,
 	test_builtin_env_with_arg,
 	test_builtin_export_new,
 	test_builtin_export_existing,
 	test_builtin_export_invalid,
 	test_builtin_export_path,
+	test_builtin_export_no_args,
 	test_builtin_unset,
+	test_builtin_unset_path,
 	test_builtin_unset_invalid,
+	test_3C_segfault_first_and_last,
 	NULL
 };
 
