@@ -6,7 +6,7 @@
 /*   By: fjuras <fjuras@student.42wolfsburg.de>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/24 18:28:02 by fjuras            #+#    #+#             */
-/*   Updated: 2022/11/07 14:55:32 by fjuras           ###   ########.fr       */
+/*   Updated: 2022/11/08 19:09:21 by fjuras           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -290,7 +290,6 @@ int	test_builtin_echo(const char *filter)
 	d.retval_match = test_expect_retval(d.retval, 0);
 	return (TEST_END(d.retval_match && d.file_match));
 }
-
 
 int	test_builtin_echo_empty(const char *filter)
 {
@@ -740,6 +739,80 @@ int	test_3C_segfault_first_and_last(const char *filter)
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
+int	test_builtin_cd_pwd(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 3);
+	test_prog_args(&line.progs[d.i], "cd", "/usr/bin", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_prog_args(&line.progs[d.i], "pwd", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_prog_args(&line.progs[d.i], "./grep", "bin", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	test_store_cwd();
+	d.retval = minish_execute(&g_env, line);
+	test_restore_cwd();
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/stdout.txt", "/usr/bin", NULL);
+	d.retval_match = test_expect_retval(d.retval, 0);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
+int	test_builtin_cd_invalid_arg_number(const char *filter)
+{
+	t_line		line;
+	t_line		line2;
+	t_test_data	d;
+	t_test_data	d2;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 1);
+	test_prog_args(&line.progs[d.i], "cd", "/usr/bin", "/usr/", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	d2.i = 0;
+	test_line_init(&line2, 1);
+	test_prog_args(&line2.progs[d2.i], "cd", NULL);
+	test_prog_redirs(&line2.progs[d2.i++], NULL, NULL);
+	test_line_end(&line2, d2.i);
+	test_redirect_stdout("out/stdout.txt");
+	test_store_cwd();
+	d.retval = minish_execute(&g_env, line);
+	d2.retval = minish_execute(&g_env, line2);
+	test_restore_cwd();
+	test_close_stdout();
+	d.retval_match = test_expect_retval(d.retval, EPERM);
+	d2.retval_match = test_expect_retval(d2.retval, EPERM);
+	return (TEST_END(d.retval_match && d2.retval_match));
+}
+
+int	test_builtin_cd_invalid_path(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 1);
+	test_prog_args(&line.progs[d.i], "cd", "/usr/bin/no/such/path/", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	test_store_cwd();
+	d.retval = minish_execute(&g_env, line);
+	test_restore_cwd();
+	test_close_stdout();
+	d.retval_match = test_expect_retval(d.retval, ENOENT);
+	return (TEST_END(d.retval_match));
+}
+
 const t_test_function g_test_functions[] =
 {
 	test_single_cmd_no_args,
@@ -770,6 +843,9 @@ const t_test_function g_test_functions[] =
 	test_builtin_unset_path,
 	test_builtin_unset_invalid,
 	test_3C_segfault_first_and_last,
+	test_builtin_cd_pwd,
+	test_builtin_cd_invalid_arg_number,
+	test_builtin_cd_invalid_path,
 	NULL
 };
 

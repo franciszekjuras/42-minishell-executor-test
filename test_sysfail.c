@@ -6,7 +6,7 @@
 /*   By: fjuras <fjuras@student.42wolfsburg.de>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/10/24 18:28:02 by fjuras            #+#    #+#             */
-/*   Updated: 2022/11/07 14:19:22 by fjuras           ###   ########.fr       */
+/*   Updated: 2022/11/08 19:12:33 by fjuras           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -85,10 +85,30 @@ int	test_2C_pipe_fail(const char *filter)
 	return (TEST_END(d.retval_match && d.file_match));
 }
 
+int	test_builtin_pwd_fail(const char *filter)
+{
+	t_line		line;
+	t_test_data	d;
+
+	TEST_START_CLEAN(filter);
+	d.i = 0;
+	test_line_init(&line, 1);
+	test_prog_args(&line.progs[d.i], "pwd", NULL);
+	test_prog_redirs(&line.progs[d.i++], NULL, NULL);
+	test_line_end(&line, d.i);
+	test_redirect_stdout("out/stdout.txt");
+	d.retval = minish_execute(&g_env, line);
+	test_close_stdout();
+	d.file_match = test_expect_file_content("out/stdout.txt", NULL);
+	d.retval_match = test_expect_retval(d.retval, ENOENT);
+	return (TEST_END(d.retval_match && d.file_match));
+}
+
 const t_test_function g_test_functions[] =
 {
 	test_2C_2nd_fork_fail,
 	test_2C_pipe_fail,
+	test_builtin_pwd_fail,
 	NULL
 };
 
